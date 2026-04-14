@@ -1,0 +1,89 @@
+# =========================
+# Byte-compiled files
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Virtual environments
+# =========================
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# =========================
+# Distribution / packaging
+# =========================
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =========================
+# PyInstaller
+# =========================
+*.spec
+
+# =========================
+# Unit test / coverage
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+
+# =========================
+# Jupyter Notebook
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# IDEs / Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Logs / runtime
+# =========================
+*.log
+logs/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Environment variables
+# =========================
+.env
+*.env
+
+# =========================
+# mypy / type checkers
+# =========================
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# =========================
+# Pyre / Ruff / etc.
+# =========================
+.ruff_cache/
+.pyre/
+
+# =========================
+# Project-specific (optional)
+# =========================
+data/
+output/
+*csv
