@@ -1,12 +1,14 @@
 import struct
 import threading
 import queue
-import utility
 
-from Logger import Logger
+from PacketFiles.PacketHandler import PacketHandler
 from SerialComm import SerialComm
+from Logger import Logger
 
-# ---------------- CONFIG ----------------
+
+stop_event = threading.Event()
+
 PORT = "COM9"
 BAUD = 115200
 
@@ -14,92 +16,61 @@ HEADER = 0xABCD
 HEADER_BYTES = struct.pack("<H", HEADER)
 
 TELEMETRY_FORMAT = "<Ifffffffffff"
-TELEMETRY_SIZE = struct.calcsize(TELEMETRY_FORMAT)
-
-csv_header = "time_s,temp,bar,accX,accY,accZ,gyrX,gyrY,gyrZ,magX,magY,magZ"
-# ----------------------------------------
 
 cmd_queue = queue.Queue()
 print_queue = queue.Queue()
 
-# -------- Parsers --------
-
-def parse_telemetry(data: bytes):
-    unpacked = struct.unpack(TELEMETRY_FORMAT, data)
-
-    return {
-        "type": "telemetry",
-        "time": unpacked[0] / 1000.0,
-        "temp": unpacked[1],
-        "bar": unpacked[2],
-        "acc": unpacked[3:6],
-        "gyr": unpacked[6:9],
-        "mag": unpacked[9:12],
-    }
-
-
-def parse_response(data: bytes):
-    return {
-        "type": "response",
-        "msg": data.decode(errors="ignore").strip()
-    }
-
-
-PACKET_TYPES = {
-    0x01: parse_telemetry,
-    0x02: parse_response
-}
-
-# -------- Threads --------
 
 def input_thread():
-    while True:
+    while not stop_event.is_set():
         cmd = input("> ").strip()
         if cmd:
             cmd_queue.put(cmd)
+            
+def command_thread(ser: SerialComm):
+    while not stop_event.is_set():
+        try:
+            cmd = cmd_queue.get(timeout=0.5)
 
-
-def printer_thread():
-    while True:
-        msg = print_queue.get()
-        print(msg, flush=True)
-
-
-@utility.time_function
-def serial_loop(ser, logger):
-    while True:
-        packet = ser.read_packet(HEADER_BYTES, TELEMETRY_SIZE, PACKET_TYPES)
-
-        if packet is None:
+            ser.write((cmd + "\n").encode())
+        except queue.Empty:
             continue
 
-        if packet["type"] == "telemetry":
-            logger.log_dict(packet)
+def printer_thread():
+    while not stop_event.is_set():
+        print(print_queue.get(), flush=True)
+
+def serial_thread(ser: SerialComm, logger: Logger, handler: PacketHandler):
+    while not stop_event.is_set():
+        data = ser.read()
+
+        packet_payload = handler.read_packet(data)
+
+        if packet_payload is None:
+            continue
+
+        if packet_payload["type"] == "telemetry":
+            logger.log_dict(packet_payload)
         else:
-            print_queue.put(f"[RX] {packet['msg']}")
+            print_queue.put(f"[RX] {packet_payload['msg']}")
 
-
-def command_loop(ser):
-    while True:
-        cmd = cmd_queue.get()
-        data = (cmd + "\n").encode("utf-8")
-        ser.write(data)
-
-# -------- Main --------
 
 def main():
     ser = SerialComm(PORT, BAUD)
-    logger = Logger("log.csv", csv_header)
+    logger = Logger("log.csv", "time_s,temp,bar,accX,accY,accZ,gyrX,gyrY,gyrZ,magX,magY,magZ")
+
+    handler = PacketHandler(TELEMETRY_FORMAT, HEADER)
 
     try:
         threading.Thread(target=input_thread, daemon=True).start()
-        threading.Thread(target=command_loop, args=(ser,), daemon=True).start()
+        threading.Thread(target=command_thread, args=(ser,), daemon=True).start()
         threading.Thread(target=printer_thread, daemon=True).start()
 
-        serial_loop(ser, logger)
-
+        serial_thread(ser, logger, handler)
+    
     except KeyboardInterrupt:
-        print("\nStopping...")
+        print("Stopping ...")
+        stop_event.set()
 
     finally:
         ser.close()
