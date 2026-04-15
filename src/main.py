@@ -2,10 +2,10 @@ import struct
 import threading
 import queue
 
+from PacketFiles.Packet import Response, Telemetry
 from PacketFiles.PacketHandler import PacketHandler
 from SerialComm import SerialComm
 from Logger import Logger
-
 
 stop_event = threading.Event()
 
@@ -19,6 +19,7 @@ TELEMETRY_FORMAT = "<Ifffffffffff"
 
 cmd_queue = queue.Queue()
 print_queue = queue.Queue()
+telemetry_queue = queue.Queue()
 
 
 def input_thread():
@@ -44,16 +45,17 @@ def serial_thread(ser: SerialComm, logger: Logger, handler: PacketHandler):
     while not stop_event.is_set():
         data = ser.read()
 
-        packet_payload = handler.read_packet(data)
+        packet: Telemetry | Response = handler.read_packet(data)
 
-        if packet_payload is None:
+        if packet is None:
             continue
 
-        if packet_payload["type"] == "telemetry":
-            logger.log_dict(packet_payload)
-        else:
-            print_queue.put(f"[RX] {packet_payload['msg']}")
+        if isinstance(packet, Telemetry):
+            logger.log_dict(packet)
+            telemetry_queue.put(packet)
 
+        elif isinstance(packet, Response):
+            print_queue.put(f"[RX] {packet.message}")
 
 def main():
     ser = SerialComm(PORT, BAUD)

@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+import string
 import struct
 
 
@@ -9,3 +11,15 @@ class Packet:
 
         self.format = payload_format
         self.size = struct.calcsize(payload_format)
+@dataclass
+class Telemetry:
+    time: float
+    temp: float
+    bar: float
+    acc: tuple
+    gyr: tuple
+    mag: tuple
+
+@dataclass
+class Response:
+    message: str

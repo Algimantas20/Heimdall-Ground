@@ -16,14 +16,14 @@ class Logger:
         if os.stat(self.log_file).st_size == 0:
             self.writer.writerow(header.split(","))
 
-    def log_dict(self, packet_payload: dict):
+    def log_dict(self, packet: Packet.Telemetry):
         self.writer.writerow([
-            packet_payload["time"],
-            packet_payload["temp"],
-            packet_payload["bar"],
-            *packet_payload["acc"],
-            *packet_payload["gyr"],
-            *packet_payload["mag"],
+            packet.time,
+            packet.temp,
+            packet.bar,
+            *packet.acc,
+            *packet.gyr,
+            *packet.mag
         ])
 
     def log(self, message: str):

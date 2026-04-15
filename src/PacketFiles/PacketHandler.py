@@ -1,5 +1,5 @@
 import struct
-from PacketFiles.Packet import Packet
+from PacketFiles.Packet import Packet, Response, Telemetry
 
 class PacketHandler:
     MAX_PACKET_SIZE = 256
@@ -62,20 +62,20 @@ class PacketHandler:
         return result
     
     def _parse_response(self, data: bytes):
-        return {
-            "type": "response",
-            "msg": data.decode(errors="ignore").strip()
-        }
+
+        return Response(data.decode(errors="ignore").strip())
 
     def _parse_telemetry(self, data: bytes):
+        if len(data) != self.packet.size:
+            raise struct.error("Invalid telemetry size")
+
         unpacked = struct.unpack(self.packet.format, data)
 
-        return {
-            "type": "telemetry",
-            "time": unpacked[0] / 1000.0,
-            "temp": unpacked[1],
-            "bar": unpacked[2],
-            "acc": unpacked[3:6],
-            "gyr": unpacked[6:9],
-            "mag": unpacked[9:12],
-        }
+        return Telemetry(
+            time=unpacked[0] / 1000.0,
+            temp=unpacked[1],
+            bar=unpacked[2],
+            acc=unpacked[3:6],
+            gyr=unpacked[6:9],
+            mag=unpacked[9:12],
+        )
